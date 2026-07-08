@@ -3,7 +3,7 @@
 
 @font-face {
   font-family: "system-condensed";
-  src: local("Arial Narrow"), local("Helvetica Neue Condensed Bold"), local("Roboto Condensed");
+  src: local("Impact"), local("Arial Narrow"), local("Helvetica Neue Condensed Bold"), local("Roboto Condensed");
 }
 
 :root {
@@ -113,7 +113,7 @@ body::before {
 }
 
 .app-header h1 {
-  font-family: "system-condensed", sans-serif;
+  font-family: Impact, "system-condensed", sans-serif;
   font-stretch: condensed;
   font-size: 34px;
   letter-spacing: 0.5px;
@@ -524,9 +524,39 @@ body::before {
   background: #e6ac5e;
 }
 
-.scrub {
+.scrub-wrap {
   flex: 1;
+}
+
+.scrub {
+  width: 100%;
   accent-color: var(--signal);
+}
+
+.scrub-ticks {
+  position: relative;
+  height: 14px;
+  margin-top: 2px;
+}
+
+.tick-label {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.tick-divider {
+  position: absolute;
+  top: -5px;
+  width: 1px;
+  height: 6px;
+  background: var(--ink-faint);
 }
 
 .speed-group {

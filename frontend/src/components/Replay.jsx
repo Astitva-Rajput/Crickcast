@@ -43,7 +43,29 @@ export default function Replay({ matchId, onBack }) {
 
     const minDelay = new Promise((r) => setTimeout(r, MIN_LOADING_MS));
     Promise.all([getReplay(matchId), minDelay])
-      .then(([replay]) => setData(replay))
+      .then(([replay]) => {
+        // the api's overs start after over 1 is already bowled - prepend a
+        // true 0/0 starting point so the scrub bar's leftmost position
+        // actually means "nothing bowled yet", not "1 over in"
+        const start = {
+          innings: 1,
+          over: -1,
+          batting_team: replay.team1,
+          runs_per_over: 0,
+          cum_runs: 0,
+          wickets_in_hand: 10,
+          wickets_fallen: 0,
+          target: null,
+          crr: 0,
+          rrr: null,
+          phase: "powerplay",
+          fours: 0,
+          sixes: 0,
+          win_prob_batting_team: 0.5,
+          balls: [],
+        };
+        setData({ ...replay, overs: [start, ...replay.overs] });
+      })
       .catch((e) => setErr(e.message));
   }, [matchId]);
 
@@ -82,6 +104,10 @@ export default function Replay({ matchId, onBack }) {
   const inn1 = inningsSummary(visible.filter((o) => o.innings === 1));
   const inn2 = inningsSummary(visible.filter((o) => o.innings === 2));
   const atEnd = index >= data.overs.length - 1;
+
+  const lastIdx = data.overs.length - 1;
+  const inn2StartIdx = data.overs.findIndex((o) => o.innings === 2);
+  const inn2StartPct = (inn2StartIdx / lastIdx) * 100;
 
   return (
     <div className="replay">
@@ -154,17 +180,24 @@ export default function Replay({ matchId, onBack }) {
           {playing ? "pause" : atEnd ? "replay" : "play"}
         </button>
 
-        <input
-          type="range"
-          min={0}
-          max={data.overs.length - 1}
-          value={index}
-          onChange={(e) => {
-            setPlaying(false);
-            setIndex(Number(e.target.value));
-          }}
-          className="scrub"
-        />
+        <div className="scrub-wrap">
+          <input
+            type="range"
+            min={0}
+            max={lastIdx}
+            value={index}
+            onChange={(e) => {
+              setPlaying(false);
+              setIndex(Number(e.target.value));
+            }}
+            className="scrub"
+          />
+          <div className="scrub-ticks">
+            <span className="tick-label" style={{ left: `${inn2StartPct / 2}%` }}>1st innings</span>
+            <span className="tick-divider" style={{ left: `${inn2StartPct}%` }} />
+            <span className="tick-label" style={{ left: `${inn2StartPct + (100 - inn2StartPct) / 2}%` }}>2nd innings</span>
+          </div>
+        </div>
 
         <div className="speed-group">
           {SPEEDS.map((s) => (

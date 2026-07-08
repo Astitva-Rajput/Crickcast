@@ -8,10 +8,11 @@ const PAD_B = 26;
 const plotW = W - PAD_L - PAD_R;
 const plotH = H - PAD_T - PAD_B;
 
-// innings 1 is overs 0-19 on the x axis, innings 2 just continues at 20-39
+// innings 1 runs -1 (the 0/0 start) through 19 on the x axis, innings 2
+// continues right after at 0-19 - 41 slots total, 0 to 40
 function xFor(innings, over) {
-  const slot = innings === 1 ? over : over + 20;
-  return PAD_L + (slot / 39) * plotW;
+  const slot = innings === 1 ? over + 1 : over + 21;
+  return PAD_L + (slot / 40) * plotW;
 }
 
 function yFor(pct) {
