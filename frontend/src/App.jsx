@@ -4,33 +4,26 @@ import MatchPicker from "./components/MatchPicker";
 import Replay from "./components/Replay";
 import LoadingMark from "./components/LoadingMark";
 
-// a real fetch on a warm api is fast enough that the loading mark barely
-// gets to animate, so pad it out a bit - purely cosmetic, no functional need
-const MIN_LOADING_MS = 900;
-
 export default function App() {
   const [matches, setMatches] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [matchId, setMatchId] = useState(null);
 
   useEffect(() => {
-    const minDelay = new Promise((r) => setTimeout(r, MIN_LOADING_MS));
-    Promise.all([getMatches(), minDelay])
-      .then(([data]) => setMatches(data))
-      .catch((e) => setLoadError(e.message));
+    getMatches().then(setMatches).catch((e) => setLoadError(e.message));
   }, []);
 
   return (
     <div className="app">
       <header className="app-header">
-        <div className="brand">
+        <button className="brand" onClick={() => setMatchId(null)}>
           <svg className="brand-mark" width="20" height="16" viewBox="0 0 20 16">
             <rect className="bar" x="0" y="6" width="4" height="10" rx="1" fill="var(--signal)" />
             <rect className="bar" x="8" y="2" width="4" height="14" rx="1" fill="var(--signal)" />
             <rect className="bar" x="16" y="9" width="4" height="7" rx="1" fill="var(--signal)" />
           </svg>
           <h1>Crick<span>Cast</span></h1>
-        </div>
+        </button>
         <p>ball-by-ball win probability, replayed over by over — men's T20Is</p>
       </header>
 

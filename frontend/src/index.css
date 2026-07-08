@@ -87,6 +87,12 @@ body::before {
   align-items: center;
   gap: 10px;
   margin: 0 0 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
 }
 
 .brand-mark {
