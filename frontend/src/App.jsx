@@ -33,7 +33,14 @@ export default function App() {
       )}
 
       {!loadError && matches === null && (
-        <div className="replay-loading">waking up the server, this can take a bit on the first load…</div>
+        <div className="replay-loading">
+          <svg className="brand-mark loading-mark" width="30" height="24" viewBox="0 0 20 16">
+            <rect className="bar" x="0" y="6" width="4" height="10" rx="1" fill="var(--signal)" />
+            <rect className="bar" x="8" y="2" width="4" height="14" rx="1" fill="var(--signal)" />
+            <rect className="bar" x="16" y="9" width="4" height="7" rx="1" fill="var(--signal)" />
+          </svg>
+          waking up the server, this can take a bit on the first load…
+        </div>
       )}
 
       {!loadError && matches !== null && matchId === null && (
