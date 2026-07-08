@@ -4,7 +4,7 @@ import MatchPicker from "./components/MatchPicker";
 import Replay from "./components/Replay";
 
 export default function App() {
-  const [matches, setMatches] = useState([]);
+  const [matches, setMatches] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [matchId, setMatchId] = useState(null);
 
@@ -28,11 +28,15 @@ export default function App() {
 
       {loadError && (
         <div className="replay-error">
-          can't reach the API ({loadError}) — run `uvicorn api.main:app --port 8756` first.
+          can't reach the API ({loadError}) — it might be waking up, try refreshing in a moment.
         </div>
       )}
 
-      {!loadError && matchId === null && (
+      {!loadError && matches === null && (
+        <div className="replay-loading">waking up the server, this can take a bit on the first load…</div>
+      )}
+
+      {!loadError && matches !== null && matchId === null && (
         <MatchPicker matches={matches} onPick={setMatchId} />
       )}
 

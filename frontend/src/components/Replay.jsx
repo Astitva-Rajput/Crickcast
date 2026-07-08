@@ -56,7 +56,7 @@ export default function Replay({ matchId, onBack }) {
   if (err) {
     return (
       <div className="replay-error">
-        couldn't load that match ({err}) — is the API running on :8756?
+        couldn't load that match ({err}) — the API might be waking up, try again in a moment.
         <button className="link-btn" onClick={onBack}>go back</button>
       </div>
     );
