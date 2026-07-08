@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
 import { getReplay } from "../api";
 import ProbChart from "./ProbChart";
+import LoadingMark from "./LoadingMark";
 
 const SPEEDS = [
   { label: "1x", ms: 850 },
   { label: "2x", ms: 420 },
   { label: "4x", ms: 200 },
 ];
+
+// same cosmetic padding as App.jsx - a warm api answers fast enough that
+// the loading mark would barely get to animate otherwise
+const MIN_LOADING_MS = 900;
 
 // clay vs moss, kept separate from the ochre used for buttons/focus/playhead
 const TEAM1_COLOR = "#c1652f";
@@ -36,8 +41,9 @@ export default function Replay({ matchId, onBack }) {
     setPlaying(false);
     setErr(null);
 
-    getReplay(matchId)
-      .then(setData)
+    const minDelay = new Promise((r) => setTimeout(r, MIN_LOADING_MS));
+    Promise.all([getReplay(matchId), minDelay])
+      .then(([replay]) => setData(replay))
       .catch((e) => setErr(e.message));
   }, [matchId]);
 
@@ -63,7 +69,12 @@ export default function Replay({ matchId, onBack }) {
   }
 
   if (!data) {
-    return <div className="replay-loading">loading replay…</div>;
+    return (
+      <div className="replay-loading">
+        <LoadingMark />
+        loading replay…
+      </div>
+    );
   }
 
   const visible = data.overs.slice(0, index + 1);

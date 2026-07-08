@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { getMatches } from "./api";
 import MatchPicker from "./components/MatchPicker";
 import Replay from "./components/Replay";
+import LoadingMark from "./components/LoadingMark";
+
+// a real fetch on a warm api is fast enough that the loading mark barely
+// gets to animate, so pad it out a bit - purely cosmetic, no functional need
+const MIN_LOADING_MS = 900;
 
 export default function App() {
   const [matches, setMatches] = useState(null);
@@ -9,7 +14,10 @@ export default function App() {
   const [matchId, setMatchId] = useState(null);
 
   useEffect(() => {
-    getMatches().then(setMatches).catch((e) => setLoadError(e.message));
+    const minDelay = new Promise((r) => setTimeout(r, MIN_LOADING_MS));
+    Promise.all([getMatches(), minDelay])
+      .then(([data]) => setMatches(data))
+      .catch((e) => setLoadError(e.message));
   }, []);
 
   return (
@@ -34,11 +42,7 @@ export default function App() {
 
       {!loadError && matches === null && (
         <div className="replay-loading">
-          <svg className="brand-mark loading-mark" width="30" height="24" viewBox="0 0 20 16">
-            <rect className="bar" x="0" y="6" width="4" height="10" rx="1" fill="var(--signal)" />
-            <rect className="bar" x="8" y="2" width="4" height="14" rx="1" fill="var(--signal)" />
-            <rect className="bar" x="16" y="9" width="4" height="7" rx="1" fill="var(--signal)" />
-          </svg>
+          <LoadingMark />
           waking up the server, this can take a bit on the first load…
         </div>
       )}
