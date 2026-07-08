@@ -1,0 +1,48 @@
+{
+  "cv_results": [
+    {
+      "model": "xgboost",
+      "accuracy": 0.7518,
+      "log_loss": 0.4814,
+      "brier": 0.1624,
+      "roc_auc": 0.8409
+    },
+    {
+      "model": "hist_gradient_boosting",
+      "accuracy": 0.7514,
+      "log_loss": 0.4818,
+      "brier": 0.1625,
+      "roc_auc": 0.8406
+    },
+    {
+      "model": "random_forest",
+      "accuracy": 0.7495,
+      "log_loss": 0.4837,
+      "brier": 0.1632,
+      "roc_auc": 0.8393
+    },
+    {
+      "model": "logistic_regression",
+      "accuracy": 0.7494,
+      "log_loss": 0.491,
+      "brier": 0.1647,
+      "roc_auc": 0.8369
+    }
+  ],
+  "winner": "xgboost",
+  "features": [
+    "innings",
+    "over",
+    "cum_runs",
+    "wickets_in_hand",
+    "crr",
+    "rrr",
+    "crr_vs_rrr",
+    "momentum",
+    "boundary_rate",
+    "dot_balls",
+    "toss_winner_batting"
+  ],
+  "rows": 110698,
+  "matches": 3005
+}
