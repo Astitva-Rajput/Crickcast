@@ -90,19 +90,20 @@ class LiveMatch:
         self.done = m.get("matchEnded", False)
 
         if self.format is None:
-            # matchType isn't always present (the odi entries in currentMatches
-            # omit it), so fall back to the match name
-            mt = m.get("matchType", "").lower()
-            name = m.get("name", "").lower()
+            # matchType is sometimes missing and sometimes present-but-null,
+            # so "or" catches both instead of just the missing case .get()'s
+            # default would
+            mt = (m.get("matchType") or "").lower()
+            name = (m.get("name") or "").lower()
             self.format = mt if mt in FORMAT_OVERS else ("odi" if "odi" in name else "t20")
-        self.toss_winner = m.get("tossWinner", "").lower()
-        self.toss_choice = m.get("tossChoice", "").lower()
+        self.toss_winner = (m.get("tossWinner") or "").lower()
+        self.toss_choice = (m.get("tossChoice") or "").lower()
 
         # batting side of innings 1 is whichever team's name leads the first
         # score entry's label - innings 2 is the other one
         score = m.get("score", [])
         if score and not self.batting_first:
-            label = score[0].get("inning", "").lower()
+            label = (score[0].get("inning") or "").lower()
             for team in m.get("teams", []):
                 if label.startswith(team.lower()):
                     self.batting_first = team.lower()
@@ -194,11 +195,18 @@ TRACKED = {}
 
 @app.get("/api/live/matches")
 def live_matches():
-    matches = api_get("currentMatches", offset=0)
+    if not API_KEY:
+        raise HTTPException(status_code=500, detail="CRICKETDATA_API_KEY not set")
+    try:
+        matches = api_get("currentMatches", offset=0)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"couldn't reach cricketdata.org: {e}")
+
     out = []
     for m in matches:
-        mt = m.get("matchType", "").lower()
-        fmt = mt if mt in FORMAT_OVERS else ("odi" if "odi" in m.get("name", "").lower() else None)
+        mt = (m.get("matchType") or "").lower()
+        name = (m.get("name") or "").lower()
+        fmt = mt if mt in FORMAT_OVERS else ("odi" if "odi" in name else None)
         if fmt is None:
             continue
         if not m.get("matchStarted") or m.get("matchEnded"):
