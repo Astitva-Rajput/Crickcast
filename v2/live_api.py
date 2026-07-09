@@ -204,21 +204,29 @@ def live_matches():
 
     out = []
     for m in matches:
-        mt = (m.get("matchType") or "").lower()
-        name = (m.get("name") or "").lower()
-        fmt = mt if mt in FORMAT_OVERS else ("odi" if "odi" in name else None)
-        if fmt is None:
+        # one odd entry from cricketdata.org shouldn't take the whole list
+        # down - skip it and keep going instead of crashing the request
+        try:
+            if not m.get("id"):
+                continue
+            mt = (m.get("matchType") or "").lower()
+            name = (m.get("name") or "").lower()
+            fmt = mt if mt in FORMAT_OVERS else ("odi" if "odi" in name else None)
+            if fmt is None:
+                continue
+            if not m.get("matchStarted") or m.get("matchEnded"):
+                continue
+            out.append({
+                "id"    : m["id"],
+                "name"  : m.get("name", ""),
+                "format": fmt,
+                "venue" : m.get("venue", ""),
+                "teams" : m.get("teams", []),
+                "status": m.get("status", ""),
+            })
+        except Exception:
             continue
-        if not m.get("matchStarted") or m.get("matchEnded"):
-            continue
-        out.append({
-            "id"    : m["id"],
-            "name"  : m.get("name", ""),
-            "format": fmt,
-            "venue" : m.get("venue", ""),
-            "teams" : m.get("teams", []),
-            "status": m.get("status", ""),
-        })
+
     return out
 
 
