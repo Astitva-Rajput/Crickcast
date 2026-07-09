@@ -81,6 +81,12 @@ export default function Live({ matchId, onBack }) {
         </span>
       </div>
 
+      {data.error && (
+        <div className="live-stale-notice">
+          having trouble getting a fresh update{data.stale_seconds != null && ` — showing the score from ${Math.round(data.stale_seconds / 60)} min ago`}
+        </div>
+      )}
+
       <div className="scoreboard">
         <div className={`scoreboard-team ${!data.done && battingTeam === data.team1 ? "batting" : ""}`}>
           <span className="team-swatch" style={{ background: TEAM1_COLOR }} />

@@ -64,8 +64,8 @@ class LiveMatch:
         self.match_id = match_id
         self.info = {}
         self.curve = []          # over-level points, same shape the frontend already reads
-        self.snapshots = []      # raw (innings, completed_overs, runs, wickets) per poll
         self.last_poll = 0.0
+        self.last_success = 0.0
         self.done = False
         self.error = None
         self.toss_winner = ""
@@ -75,12 +75,16 @@ class LiveMatch:
         self.lock = threading.Lock()
 
     def poll(self):
-        # respect the budget no matter how often the frontend asks
-        if time.time() - self.last_poll < POLL_SECONDS and self.snapshots:
+        # respect the budget no matter how often the frontend asks - only
+        # the very first call (last_poll still 0) is allowed through early
+        polled_recently = self.last_poll > 0 and (time.time() - self.last_poll) < POLL_SECONDS
+        if polled_recently:
             return
         self.last_poll = time.time()
 
         m = api_get("match_info", id=self.match_id)
+        self.last_success = time.time()
+        self.error = None
         self.info = {
             "name"  : m.get("name", ""),
             "venue" : m.get("venue", ""),
@@ -249,6 +253,8 @@ def live_curve(match_id: str):
     team1 = next((t for t in teams if t.lower() == tracker.batting_first), teams[0] if teams else "")
     team2 = next((t for t in teams if t != team1), "")
 
+    stale_seconds = int(time.time() - tracker.last_success) if tracker.last_success else None
+
     return {
         "match_id"    : match_id,
         "format"      : tracker.format,
@@ -259,6 +265,10 @@ def live_curve(match_id: str):
         "done"        : tracker.done,
         "overs"       : tracker.curve,
         "next_poll_in": max(0, int(POLL_SECONDS - (time.time() - tracker.last_poll))),
+        # non-null only when the most recent poll failed but we still have
+        # older data to show instead of a blank screen
+        "error"        : tracker.error,
+        "stale_seconds": stale_seconds,
     }
 
 
