@@ -38,14 +38,48 @@ app.add_middleware(
 BUNDLES = {fmt: joblib.load(path) for fmt, path in MODEL_PATHS.items()}
 
 
-def api_get(path, **params):
+def api_request(path, **params):
     params["apikey"] = API_KEY
     r = requests.get(f"{API_BASE}/{path}", params=params, timeout=15)
     r.raise_for_status()
     payload = r.json()
     if payload.get("status") != "success":
         raise RuntimeError(f"cricketdata.org error: {payload.get('reason', 'unknown')}")
-    return payload["data"]
+    return payload
+
+
+def api_get(path, **params):
+    return api_request(path, **params)["data"]
+
+
+# cricketdata.org caps currentMatches at 25 rows/page - a busy day easily
+# has 40-50+ matches worldwide, so stopping after page one silently drops
+# real matches (this is how a live india game went missing earlier).
+# capped at 6 pages (150 matches) so one broken day can't loop forever
+MAX_PAGES = 6
+
+_matches_cache = {"data": None, "fetched_at": 0.0}
+MATCHES_CACHE_SECONDS = 90  # shared across every visitor, not per-poll
+
+
+def fetch_all_current_matches():
+    if time.time() - _matches_cache["fetched_at"] < MATCHES_CACHE_SECONDS and _matches_cache["data"] is not None:
+        return _matches_cache["data"]
+
+    all_matches = []
+    offset = 0
+    for _ in range(MAX_PAGES):
+        payload = api_request("currentMatches", offset=offset)
+        page = payload["data"]
+        all_matches.extend(page)
+        total = payload.get("info", {}).get("totalRows", len(all_matches))
+        offset += len(page)
+        if len(page) == 0 or offset >= total:
+            break
+
+    _matches_cache["data"] = all_matches
+    _matches_cache["fetched_at"] = time.time()
+    return all_matches
 
 
 # cricketdata gives overs as a decimal like 18.2 meaning 18 overs 2 balls,
@@ -202,7 +236,7 @@ def live_matches():
     if not API_KEY:
         raise HTTPException(status_code=500, detail="CRICKETDATA_API_KEY not set")
     try:
-        matches = api_get("currentMatches", offset=0)
+        matches = fetch_all_current_matches()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"couldn't reach cricketdata.org: {e}")
 
