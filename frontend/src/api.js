@@ -28,3 +28,22 @@ export function getMatches() {
 export function getReplay(matchId) {
   return get(`/matches/${matchId}/replay`);
 }
+
+// the v2 live service runs separately from the replay api
+const LIVE_BASE = `${import.meta.env.VITE_LIVE_API_BASE || "http://127.0.0.1:8757"}/api`;
+
+async function getLiveJson(path) {
+  const res = await fetch(`${LIVE_BASE}${path}`);
+  if (!res.ok) {
+    throw new Error(`${path} -> ${res.status}`);
+  }
+  return res.json();
+}
+
+export function getLiveMatches() {
+  return getLiveJson("/live/matches");
+}
+
+export function getLive(matchId) {
+  return getLiveJson(`/live/${matchId}`);
+}

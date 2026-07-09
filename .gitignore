@@ -5,3 +5,5 @@ __pycache__/
 venv/
 .venv/
 data/processed/all_matches.csv
+data/raw/odis_male_json/
+data/processed/odi_matches_clean.csv

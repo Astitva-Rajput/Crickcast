@@ -8,18 +8,18 @@ const PAD_B = 26;
 const plotW = W - PAD_L - PAD_R;
 const plotH = H - PAD_T - PAD_B;
 
-// innings 1 runs -1 (the 0/0 start) through 19 on the x axis, innings 2
-// continues right after at 0-19 - 41 slots total, 0 to 40
-function xFor(innings, over) {
-  const slot = innings === 1 ? over + 1 : over + 21;
-  return PAD_L + (slot / 40) * plotW;
+// innings 1 runs -1 (the 0/0 start) through the last over on the x axis,
+// innings 2 continues right after. totalOvers is 20 for t20, 50 for odi
+function xFor(innings, over, totalOvers) {
+  const slot = innings === 1 ? over + 1 : over + totalOvers + 1;
+  return PAD_L + (slot / (totalOvers * 2)) * plotW;
 }
 
 function yFor(pct) {
   return PAD_T + (1 - pct / 100) * plotH;
 }
 
-export default function ProbChart({ overs, team1, team2, team1Color, team2Color, live }) {
+export default function ProbChart({ overs, team1, team2, team1Color, team2Color, live, totalOvers = 20 }) {
   if (overs.length === 0) {
     return <div className="chart-empty">waiting for first over...</div>;
   }
@@ -32,15 +32,15 @@ export default function ProbChart({ overs, team1, team2, team1Color, team2Color,
   });
 
   const linePath = points
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${xFor(p.innings, p.over)} ${yFor(p.team1Pct)}`)
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${xFor(p.innings, p.over, totalOvers)} ${yFor(p.team1Pct)}`)
     .join(" ");
 
   const fillPath =
-    `${linePath} L ${xFor(points.at(-1).innings, points.at(-1).over)} ${yFor(50)} ` +
+    `${linePath} L ${xFor(points.at(-1).innings, points.at(-1).over, totalOvers)} ${yFor(50)} ` +
     points
       .slice()
       .reverse()
-      .map((p) => `L ${xFor(p.innings, p.over)} ${yFor(50)}`)
+      .map((p) => `L ${xFor(p.innings, p.over, totalOvers)} ${yFor(50)}`)
       .join(" ") +
     " Z";
 
@@ -62,7 +62,7 @@ export default function ProbChart({ overs, team1, team2, team1Color, team2Color,
         ))}
 
         {/* innings divider */}
-        <line x1={xFor(2, 0)} x2={xFor(2, 0)} y1={PAD_T} y2={H - PAD_B} className="innings-divider" />
+        <line x1={xFor(2, 0, totalOvers)} x2={xFor(2, 0, totalOvers)} y1={PAD_T} y2={H - PAD_B} className="innings-divider" />
 
         <path d={fillPath} className="chart-fill" fill={last.team1Pct >= 50 ? team1Color : team2Color} />
         <path d={linePath} className="chart-line" />
@@ -70,24 +70,30 @@ export default function ProbChart({ overs, team1, team2, team1Color, team2Color,
         {/* pulses while playing */}
         {live && (
           <circle
-            cx={xFor(last.innings, last.over)}
+            cx={xFor(last.innings, last.over, totalOvers)}
             cy={yFor(last.team1Pct)}
             r="4.5"
             className="chart-dot-pulse"
           />
         )}
         <circle
-          cx={xFor(last.innings, last.over)}
+          cx={xFor(last.innings, last.over, totalOvers)}
           cy={yFor(last.team1Pct)}
           r="4.5"
           className="chart-dot"
         />
 
-        {/* axis labels */}
-        <text x={PAD_L} y={H - 6} className="axis-label">Powerplay</text>
-        <text x={xFor(1, 19)} y={H - 6} className="axis-label" textAnchor="end">Inn 1</text>
-        <text x={xFor(2, 0)} y={H - 6} className="axis-label" textAnchor="middle">Inn 2</text>
-        <text x={W - PAD_R} y={H - 6} className="axis-label" textAnchor="end">Death</text>
+        {/* axis labels - powerplay/death only mean anything in a t20 */}
+        {totalOvers === 20 && (
+          <text x={PAD_L} y={H - 6} className="axis-label">Powerplay</text>
+        )}
+        <text x={xFor(1, totalOvers - 1, totalOvers)} y={H - 6} className="axis-label" textAnchor="end">Inn 1</text>
+        <text x={xFor(2, 0, totalOvers)} y={H - 6} className="axis-label" textAnchor="middle">Inn 2</text>
+        {totalOvers === 20 ? (
+          <text x={W - PAD_R} y={H - 6} className="axis-label" textAnchor="end">Death</text>
+        ) : (
+          <text x={W - PAD_R} y={H - 6} className="axis-label" textAnchor="end">Ov {totalOvers}</text>
+        )}
 
         <text x={PAD_L - 6} y={yFor(100) + 4} className="axis-label" textAnchor="end">100</text>
         <text x={PAD_L - 6} y={yFor(50) + 4} className="axis-label" textAnchor="end">50</text>
