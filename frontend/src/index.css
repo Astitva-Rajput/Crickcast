@@ -204,19 +204,56 @@ body::before {
 
 /* --- match picker --- */
 
+.picker-searchbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 15px;
+  color: var(--ink-faint);
+  pointer-events: none;
+  transition: color 0.15s;
+}
+
+.picker-searchbar:focus-within .search-icon {
+  color: var(--signal);
+}
+
 .picker-search {
   width: 100%;
-  padding: 12px 14px;
+  padding: 12px 40px;
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: 6px;
   color: var(--ink);
   font-size: 15px;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .picker-search:focus {
   outline: none;
   border-color: var(--signal);
+  box-shadow: 0 0 0 3px var(--signal-dim);
+}
+
+.search-clear {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--ink-faint);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+
+.search-clear:hover {
+  color: var(--ink);
 }
 
 .picker-count {
@@ -237,6 +274,20 @@ body::before {
   border: 1px solid var(--line);
   border-radius: 6px;
   box-shadow: var(--shadow);
+}
+
+.picker-list::-webkit-scrollbar {
+  width: 10px;
+}
+
+.picker-list::-webkit-scrollbar-thumb {
+  background: var(--bg-raised-2);
+  border-radius: 5px;
+  border: 2px solid var(--bg-raised);
+}
+
+.picker-list::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-faint);
 }
 
 .picker-row {
@@ -274,8 +325,12 @@ body::before {
 
 .picker-winner {
   color: var(--signal);
-  font-size: 12.5px;
+  font-size: 12px;
   white-space: nowrap;
+  background: var(--signal-dim);
+  border-radius: 999px;
+  padding: 2px 10px;
+  justify-self: start;
 }
 
 .picker-empty {
@@ -371,12 +426,15 @@ body::before {
   font-weight: 600;
   font-size: 14px;
   flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .team-score {
   font-family: ui-monospace, "SF Mono", Consolas, monospace;
   font-size: 18px;
   font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 
 .team-score small {
@@ -388,6 +446,7 @@ body::before {
   font-style: italic;
   color: var(--ink-faint);
   font-size: 13px;
+  flex-shrink: 0;
 }
 
 /* --- probability chart --- */
@@ -553,6 +612,11 @@ body::before {
   background: var(--bg-raised);
   border: 1px solid var(--line);
   color: var(--ink-dim);
+  animation: ball-in 0.18s ease both;
+}
+
+@keyframes ball-in {
+  from { transform: scale(0.6); opacity: 0; }
 }
 
 .ball-boundary {
@@ -593,6 +657,10 @@ body::before {
 
 .play-btn:hover {
   background: #e6ac5e;
+}
+
+.play-btn:active {
+  transform: translateY(1px);
 }
 
 .scrub-wrap {
@@ -685,9 +753,68 @@ body::before {
   border-radius: 2px;
 }
 
+/* little rise-in when swapping between the picker and a match view */
+.picker,
+.replay {
+  animation: view-in 0.25s ease both;
+}
+
+@keyframes view-in {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .picker,
+  .replay,
+  .ball,
+  .brand-mark .bar,
+  .loading-mark .bar,
+  .chart-dot-pulse,
+  .live-dot {
+    animation: none;
+  }
+}
+
 @media (max-width: 560px) {
   .picker-row {
     grid-template-columns: 1fr;
     gap: 3px;
+  }
+
+  /* long venue names were overflowing off the card edge instead of
+     wrapping once the row goes single-column on mobile */
+  .picker-meta {
+    white-space: normal;
+    line-height: 1.4;
+  }
+
+  /* play button + scrub + speed group in one row left the scrub too
+     narrow for its own tick labels, which then overlapped each other -
+     give the scrub its own full-width row instead */
+  .controls {
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .scrub-wrap {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  /* real team names (unlike the short international ones in replay) can
+     be long enough that squeezing them next to the score collides the
+     two - give the name its own row instead of fighting for width */
+  .scoreboard-team {
+    flex-wrap: wrap;
+  }
+
+  .team-name {
+    flex-basis: 100%;
   }
 }

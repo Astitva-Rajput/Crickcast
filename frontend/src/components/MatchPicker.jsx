@@ -41,13 +41,29 @@ export default function MatchPicker({ matches, onPick }) {
 
   return (
     <div className="picker">
-      <input
-        className="picker-search"
-        placeholder="find a match — team, venue, season..."
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        autoFocus
-      />
+      <div className="picker-searchbar">
+        <svg className="search-icon" width="15" height="15" viewBox="0 0 15 15" fill="none">
+          <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.5" />
+          <line x1="10" y1="10" x2="13.5" y2="13.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+        <input
+          className="picker-search"
+          placeholder="find a match — team, venue, season..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setQuery("");
+            // enter just opens the top result, saves a click
+            if (e.key === "Enter" && query && filtered.length > 0) onPick(filtered[0].match_id);
+          }}
+          autoFocus
+        />
+        {query && (
+          <button className="search-clear" onClick={() => setQuery("")} aria-label="clear search">
+            ×
+          </button>
+        )}
+      </div>
 
       <div className="picker-count">
         {matches.length.toLocaleString()} matches on file
