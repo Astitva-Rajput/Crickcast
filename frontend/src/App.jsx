@@ -40,7 +40,7 @@ export default function App() {
           </svg>
           <h1>Crick<span>Cast</span></h1>
         </button>
-        <p>ball-by-ball win probability, live and replayed over by over</p>
+        <p>live/simulated win probability</p>
       </header>
 
       {loadError && (
@@ -52,7 +52,7 @@ export default function App() {
       {!loadError && matches === null && picking && (
         <div className="replay-loading">
           <LoadingMark />
-          waking up the server, this can take a bit on the first load…
+          loading..please wait this can take a bit.
         </div>
       )}
 
@@ -99,7 +99,13 @@ export default function App() {
       )}
 
       <footer className="app-footer">
-        CrickCast · ball-by-ball data via cricsheet.org · win probability from a calibrated xgboost model
+        <span>
+          win probability from a custom ML model · ball-by-ball data via{" "}
+          <a href="https://cricsheet.org" target="_blank" rel="noopener">cricsheet.org</a>
+        </span>
+        <span className="footer-credit">
+          built by <a href="https://github.com/Astitva-Rajput" target="_blank" rel="noopener">Astitva</a>
+        </span>
       </footer>
     </div>
   );
