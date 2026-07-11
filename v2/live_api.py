@@ -1,3 +1,4 @@
+import json
 import os
 import time
 import threading
@@ -9,6 +10,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# finished matches we tracked get their curve saved here so the data
+# outlives the match (and the in-memory tracker)
+ARCHIVE_DIR = os.path.join(BASE_DIR, "data", "live_archive")
 
 # one model per format, same 9 features. a t20 model can't score odi states,
 # over 35 is outside anything it trained on and its rrr assumes 20 overs
@@ -109,6 +114,9 @@ class LiveMatch:
         self.lock = threading.Lock()
 
     def poll(self):
+        # a finished match never changes, no point burning hits on it
+        if self.done:
+            return
         # respect the budget no matter how often the frontend asks - only
         # the very first call (last_poll still 0) is allowed through early
         polled_recently = self.last_poll > 0 and (time.time() - self.last_poll) < POLL_SECONDS
@@ -151,6 +159,17 @@ class LiveMatch:
             overs_done, _ = parse_overs(s.get("o", 0))
             self._advance(innings_index, overs_done, s.get("r", 0), s.get("w", 0),
                           target=self._target(m, innings_index))
+
+        if self.done and self.curve:
+            self._archive()
+
+    def _archive(self):
+        try:
+            os.makedirs(ARCHIVE_DIR, exist_ok=True)
+            with open(os.path.join(ARCHIVE_DIR, f"{self.match_id}.json"), "w") as f:
+                json.dump(build_response(self), f)
+        except OSError:
+            pass
 
     def _target(self, m, innings_index):
         if innings_index != 2:
@@ -231,58 +250,9 @@ class LiveMatch:
 TRACKED = {}
 
 
-@app.get("/api/live/matches")
-def live_matches():
-    if not API_KEY:
-        raise HTTPException(status_code=500, detail="CRICKETDATA_API_KEY not set")
-    try:
-        matches = fetch_all_current_matches()
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"couldn't reach cricketdata.org: {e}")
-
-    out = []
-    for m in matches:
-        # one odd entry from cricketdata.org shouldn't take the whole list
-        # down - skip it and keep going instead of crashing the request
-        try:
-            if not m.get("id"):
-                continue
-            mt = (m.get("matchType") or "").lower()
-            name = (m.get("name") or "").lower()
-            fmt = mt if mt in FORMAT_OVERS else ("odi" if "odi" in name else None)
-            if fmt is None:
-                continue
-            if not m.get("matchStarted") or m.get("matchEnded"):
-                continue
-            out.append({
-                "id"    : m["id"],
-                "name"  : m.get("name", ""),
-                "format": fmt,
-                "venue" : m.get("venue", ""),
-                "teams" : m.get("teams", []),
-                "status": m.get("status", ""),
-            })
-        except Exception:
-            continue
-
-    return out
-
-
-@app.get("/api/live/{match_id}")
-def live_curve(match_id: str):
-    if not API_KEY:
-        raise HTTPException(status_code=500, detail="CRICKETDATA_API_KEY not set")
-
-    tracker = TRACKED.setdefault(match_id, LiveMatch(match_id))
-    try:
-        tracker.poll()
-    except Exception as e:
-        tracker.error = str(e)
-        if not tracker.curve:
-            raise HTTPException(status_code=502, detail=f"couldn't reach cricketdata.org: {e}")
-
-    # team1 = whoever batted first, keeps the frontend's scoreboard/chart
-    # conventions identical to the replay payload
+# team1 = whoever batted first, keeps the frontend's scoreboard/chart
+# conventions identical to the replay payload
+def build_response(tracker):
     teams = tracker.info.get("teams", [])
     team1 = next((t for t in teams if t.lower() == tracker.batting_first), teams[0] if teams else "")
     team2 = next((t for t in teams if t != team1), "")
@@ -290,7 +260,7 @@ def live_curve(match_id: str):
     stale_seconds = int(time.time() - tracker.last_success) if tracker.last_success else None
 
     return {
-        "match_id"    : match_id,
+        "match_id"    : tracker.match_id,
         "format"      : tracker.format,
         "total_overs" : FORMAT_OVERS.get(tracker.format),
         "team1"       : team1,
@@ -304,6 +274,101 @@ def live_curve(match_id: str):
         "error"        : tracker.error,
         "stale_seconds": stale_seconds,
     }
+
+
+def archived_matches(limit=5):
+    if not os.path.isdir(ARCHIVE_DIR):
+        return []
+    paths = [os.path.join(ARCHIVE_DIR, f) for f in os.listdir(ARCHIVE_DIR) if f.endswith(".json")]
+    paths.sort(key=os.path.getmtime, reverse=True)
+
+    out = []
+    for path in paths[:limit]:
+        try:
+            with open(path) as f:
+                d = json.load(f)
+            out.append({
+                "id"    : d["match_id"],
+                "name"  : d["info"].get("name", ""),
+                "format": d.get("format"),
+                "venue" : d["info"].get("venue", ""),
+                "teams" : d["info"].get("teams", []),
+                "status": d["info"].get("status", ""),
+                "state" : "finished",
+            })
+        except (OSError, KeyError, ValueError):
+            continue
+    return out
+
+
+@app.get("/api/live/matches")
+def live_matches():
+    if not API_KEY:
+        raise HTTPException(status_code=500, detail="CRICKETDATA_API_KEY not set")
+    try:
+        matches = fetch_all_current_matches()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"couldn't reach cricketdata.org: {e}")
+
+    live, upcoming = [], []
+    for m in matches:
+        # one odd entry from cricketdata.org shouldn't take the whole list
+        # down - skip it and keep going instead of crashing the request
+        try:
+            if not m.get("id"):
+                continue
+            mt = (m.get("matchType") or "").lower()
+            name = (m.get("name") or "").lower()
+            fmt = mt if mt in FORMAT_OVERS else ("odi" if "odi" in name else None)
+            if fmt is None:
+                continue
+            if m.get("matchEnded"):
+                continue
+
+            # cricketdata's matchStarted flag lies (it was true for a match
+            # starting the next day), balls actually bowled is the real test
+            state = "live" if m.get("score") else "upcoming"
+
+            row = {
+                "id"    : m["id"],
+                "name"  : m.get("name", ""),
+                "format": fmt,
+                "venue" : m.get("venue", ""),
+                "teams" : m.get("teams", []),
+                "status": m.get("status", ""),
+                "state" : state,
+                "starts": m.get("dateTimeGMT"),
+            }
+            (live if state == "live" else upcoming).append(row)
+        except Exception:
+            continue
+
+    upcoming.sort(key=lambda r: r.get("starts") or "")
+    return live + upcoming[:5] + archived_matches()
+
+
+@app.get("/api/live/{match_id}")
+def live_curve(match_id: str):
+    # finished matches we watched get served from the archive, zero
+    # upstream hits
+    if match_id not in TRACKED:
+        path = os.path.join(ARCHIVE_DIR, f"{match_id}.json")
+        if os.path.exists(path):
+            with open(path) as f:
+                return json.load(f)
+
+    if not API_KEY:
+        raise HTTPException(status_code=500, detail="CRICKETDATA_API_KEY not set")
+
+    tracker = TRACKED.setdefault(match_id, LiveMatch(match_id))
+    try:
+        tracker.poll()
+    except Exception as e:
+        tracker.error = str(e)
+        if not tracker.curve:
+            raise HTTPException(status_code=502, detail=f"couldn't reach cricketdata.org: {e}")
+
+    return build_response(tracker)
 
 
 @app.get("/api/live-health")

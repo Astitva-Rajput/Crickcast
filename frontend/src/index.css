@@ -180,6 +180,23 @@ body::before {
   border-left-color: var(--wicket);
 }
 
+/* upcoming and finished share the strip layout but drop the red urgency -
+   only the actually-live section gets the wicket-red label and border */
+.strip-upcoming .live-strip-label,
+.strip-finished .live-strip-label {
+  color: var(--ink-faint);
+}
+
+.strip-upcoming .live-list,
+.strip-finished .live-list {
+  border-color: var(--line);
+}
+
+.strip-finished .picker-winner {
+  color: var(--ink-dim);
+  background: var(--bg-raised-2);
+}
+
 .live-banner {
   display: flex;
   align-items: center;

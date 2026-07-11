@@ -5,6 +5,13 @@ import Replay from "./components/Replay";
 import Live from "./components/Live";
 import LoadingMark from "./components/LoadingMark";
 
+// "2026-07-11T13:30:00" from the api is gmt without the marker
+function startsLabel(iso) {
+  if (!iso) return "starting soon";
+  const d = new Date(iso + "Z");
+  return `starts ${d.toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}`;
+}
+
 export default function App() {
   const [matches, setMatches] = useState(null);
   const [liveMatches, setLiveMatches] = useState([]);
@@ -49,25 +56,35 @@ export default function App() {
         </div>
       )}
 
-      {picking && liveMatches.length > 0 && (
-        <div className="live-strip">
-          <div className="live-strip-label">
-            <span className="live-dot" />
-            live now
+      {picking && [
+        ["live", "live now"],
+        ["upcoming", "starting soon"],
+        ["finished", "recently finished"],
+      ].map(([state, label]) => {
+        const group = liveMatches.filter((m) => (m.state || "live") === state);
+        if (group.length === 0) return null;
+        return (
+          <div className={`live-strip strip-${state}`} key={state}>
+            <div className="live-strip-label">
+              {state === "live" && <span className="live-dot" />}
+              {label}
+            </div>
+            <ul className="live-list">
+              {group.map((m) => (
+                <li key={m.id}>
+                  <button className="picker-row live-row" onClick={() => setLiveId(m.id)}>
+                    <span className="picker-teams">{m.teams.join(" v ")}</span>
+                    <span className="picker-meta">{m.format} · {m.venue}</span>
+                    <span className="picker-winner">
+                      {state === "upcoming" ? startsLabel(m.starts) : m.status}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="live-list">
-            {liveMatches.map((m) => (
-              <li key={m.id}>
-                <button className="picker-row live-row" onClick={() => setLiveId(m.id)}>
-                  <span className="picker-teams">{m.teams.join(" v ")}</span>
-                  <span className="picker-meta">{m.format} · {m.venue}</span>
-                  <span className="picker-winner">{m.status}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        );
+      })}
 
       {!loadError && matches !== null && picking && (
         <MatchPicker matches={matches} onPick={setMatchId} />
